@@ -1,6 +1,6 @@
 O := BUILD
 
-COMMON_FLAGS := -fno-unwind-tables -fno-strip -target x86-freestanding-code16 -O ReleaseSmall -mcpu=i386
+COMMON_FLAGS := -fno-unwind-tables -fno-strip -target x86-freestanding-code16 -O ReleaseSmall -mcpu=i386 -fomit-frame-pointer
 
 $(O)/boot: $(O)/boot.elf | check_ep dump_info
 	objcopy -O binary $< $@
