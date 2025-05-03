@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+//
+// Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
+
 // -- BOOT TEXT SECTION ---------------------------------------------------------
 
 .code16

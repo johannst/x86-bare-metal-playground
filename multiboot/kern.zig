@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+//
+// Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
+
 const fmt = @import("std").fmt;
 const dbg = @import("std").debug;
 

@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+//
+// Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
+
 /// VGA text mode console [1]
 ///
 /// 8 colors + 8 bright variants:

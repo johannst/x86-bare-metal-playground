@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
+
 # Utility to check the disassembly for sse instructions.  This uses a
 # simple heuristic by checking if there are any usaged of xmm, ymm or
 # zmm register.

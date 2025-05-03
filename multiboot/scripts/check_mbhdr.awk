@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
+
 BEGIN {
     # > xxd -d -e -c 4 IMG
     #   00004096: 1badb002  ....

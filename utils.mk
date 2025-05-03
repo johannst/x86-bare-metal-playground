@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
+
 # TODO: Find a better way to compute the project root.
 B := $(abspath ..)/build/$(notdir $(CURDIR))
 

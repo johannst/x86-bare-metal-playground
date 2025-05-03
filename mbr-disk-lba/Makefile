@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
+
 include ../utils.mk
 
 build: extend-img check-entry-boot check-mbr-boot

@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+//
+// Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
+
 // Support for COM serial ports [1].
 //
 // COM ports are accessed via IO ports. Each port exposes a set of 1 byte
