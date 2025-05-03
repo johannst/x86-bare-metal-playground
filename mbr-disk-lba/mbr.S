@@ -4,6 +4,8 @@
 .intel_syntax noprefix
 
 .section .boot, "ax", @progbits
+.global _entry
+_entry:
     // Disable interrupts.
     cli
 

@@ -1,26 +1,23 @@
-O := BUILD
+include ../utils.mk
 
-# Build a legacy bios only boot disk.
-$(O)/disk.img: $(O)/kern grub
-	mkdir -p $(O)/iso/boot
-	rsync -rav $^ $(O)/iso/boot
-	grub-mkrescue -o $@ $(O)/iso -d /usr/lib/grub/i386-pc --modules="biosdisk part_msdos multiboot"
+# Overwrite default linker script.
+LDSCRIPT := kern.ld
 
-# When building the kernel we explicitly let the zig compiler emit code for a
-# very old cpu.  This way we ensure it does not emit any sse instructions, which
-# first need to be enabled before the can be used (setting up ctrl registers and
-# sse state).
-$(O)/kern: kern.ld kern.zig
-	mkdir -p $(O)
-	zig build-exe -fno-unwind-tables -femit-bin=$@ -target x86-freestanding-none -mcpu i386 -O Debug -fno-strip --script $^
-	xxd -d -e -c4 $@ | awk -f scripts/check_mbhdr.awk
-	objdump -d $@ | awk -f scripts/check_sse.awk
+$(B)/disk.img: $(B)/kern.elf grub check-mbhdr check-sse
+	mkdir -p $(B)/iso/boot
+	rsync -rav $(filter-out check-%,$^) $(B)/iso/boot
+	grub-mkrescue -o $@ $(B)/iso -d /usr/lib/grub/i386-pc --modules="biosdisk part_msdos multiboot" 2> $(B)/grub.txt || { cat $(B)/grub.txt; exit 1; }
 
-clean:
-	$(RM) -r $(O)
+$(B)/kern.elf: $(B)/kern-32.o
 
-run: $(O)/kern
+check-mbhdr: $(B)/kern.elf
+	$(call vcmd, CHECK-MBHDR,$<,xxd -d -e -c4 $< | awk -f scripts/check_mbhdr.awk)
+
+check-sse: $(B)/kern.elf
+	$(call vcmd, CHECK-SSE,$<,objdump -d $< | awk -f scripts/check_sse.awk)
+
+run: $(B)/kern.elf
 	qemu-system-i386 -kernel $< -append mode=raw-elf
 
-run-img: $(O)/disk.img
-	qemu-system-i386 -hda $<
+run-img: $(B)/disk.img
+	qemu-system-i386 -drive file=$<,format=raw
