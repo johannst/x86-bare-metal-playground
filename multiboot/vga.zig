@@ -2,6 +2,8 @@
 //
 // Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
 
+const std = @import("std");
+
 /// VGA text mode console [1]
 ///
 /// 8 colors + 8 bright variants:
@@ -88,16 +90,38 @@ pub fn vga(fg: u4, bg: u3) type {
             outb(0x3d5, @truncate(idx >> 8 & 0xff));
         }
 
-        const Writer = @import("std").io.GenericWriter(*Self, anyerror, struct {
-            fn write(ctx: *Self, bytes: []const u8) anyerror!usize {
-                ctx.puts(bytes);
-                return bytes.len;
-            }
-        }.write);
-
-        pub fn writer(self: *Self) Writer {
-            return .{ .context = self };
+        pub fn writer(self: *Self, buffer: []u8) VgaWriter {
+            return .{
+                .ctx = self,
+                .interface = .{ .buffer = buffer, .vtable = &.{ .drain = VgaWriter.drain } },
+            };
         }
+
+        pub const VgaWriter = struct {
+            ctx: *Self,
+            interface: std.Io.Writer,
+
+            fn drain(w: *std.Io.Writer, data: []const []const u8, splat: usize) std.io.Writer.Error!usize {
+                if (splat > 1) return error.WriteFailed;
+
+                // Get pointer to VgaWriter container.
+                const vw: *@This() = @alignCast(@fieldParentPtr("interface", w));
+
+                // Consume buffered data.
+                var count = w.buffered().len;
+                if (count > 0) {
+                    vw.ctx.puts(w.buffered());
+                }
+
+                // Consume additional data.
+                for (data) |slice| {
+                    count += slice.len;
+                    vw.ctx.puts(slice);
+                }
+
+                return w.consume(count);
+            }
+        };
     };
 }
 

@@ -20,8 +20,7 @@ pub fn putc(c: u8) void {
         \\int $0x10
         : // No outputs.
         : [a] "{ax}" (ax), // BIOS call number + char to write.
-        : "cc"
-    );
+        : .{ .cc = true });
 
     // On linefeed also write a carriage return to move to column 0.
     if (c == '\n') {
@@ -42,8 +41,7 @@ pub fn set_pos(r: u8) void {
         : [a] "{ax}" (0x200), // BIOS call number.
           [b] "{bx}" (0x0), // Page number.
           [d] "{dx}" (dx), // Position.
-        : "cc"
-    );
+        : .{ .cc = true });
 }
 
 /// BIOS CALL - video scroll up
@@ -64,6 +62,5 @@ pub fn scroll_up() void {
           [p] "{dx}" (dx), // Row + col lower right corner.
           [b] "{bx}" (0x0700), // Attribute, dark bg, white fg.
           [c] "{cx}" (0), // Row + col upper left corner.
-        : "cc"
-    );
+        : .{ .cc = true });
 }

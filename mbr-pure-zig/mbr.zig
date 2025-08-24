@@ -93,7 +93,7 @@ fn rdtsc() u32 {
     return asm volatile ("rdtsc"
         : [eax] "={eax}" (-> u32),
         :
-        : "edx"
+        : .{ .edx = true }
     );
 }
 

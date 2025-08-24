@@ -184,37 +184,37 @@ pub const MultibootMmapEntry = extern struct {
 
 // -- MULTIBOOT UTILS -----------------------------------------------------------
 
-const format = @import("std").fmt.format;
+const std = @import("std");
 
 pub fn bootinfo(ebx: u32) *const MultibootInfo {
     return @ptrFromInt(ebx);
 }
 
-pub fn formatBootinfo(w: anytype, mbi: *const MultibootInfo) !void {
+pub fn formatBootinfo(w: *std.Io.Writer, mbi: *const MultibootInfo) !void {
     try w.writeAll("multiboot info\n");
 
-    try format(w, "flags: 0b{b}\n", .{mbi.flags});
+    try w.print("flags: 0b{b}\n", .{mbi.flags});
 
     if (mbi.bootloaderStr()) |bootloader| {
-        try format(w, "bootloader: {s}\n", .{bootloader});
+        try w.print("bootloader: {s}\n", .{bootloader});
     }
 
     if (mbi.cmdlineStr()) |cmdline| {
-        try format(w, "cmdline: {s}\n", .{cmdline});
+        try w.print("cmdline: {s}\n", .{cmdline});
     }
 
     if (mbi.has(.MEMORY)) {
-        try format(w, "mem_lower: {x:08} - {x:08}\n", .{ 0, mbi.mem_lower * 1024 });
-        try format(w, "mem_upper: {x:08} - {x:08}\n", .{ 1024 * 1024, mbi.mem_upper * 1024 });
+        try w.print("mem_lower: {x:08} - {x:08}\n", .{ 0, mbi.mem_lower * 1024 });
+        try w.print("mem_upper: {x:08} - {x:08}\n", .{ 1024 * 1024, mbi.mem_upper * 1024 });
     }
 
     if (mbi.mmapIter()) |iter| {
         // Rebind iter,  cant bind mutable reference to temporary object.
         var it = iter;
 
-        try format(w, "mmap: @ {x:08} - {x:08}\n", .{ it.addr, it.addr + it.len - 1 });
+        try w.print("mmap: @ {x:08} - {x:08}\n", .{ it.addr, it.addr + it.len - 1 });
         while (it.next()) |map| {
-            try format(w, "region: {x:08} - {x:08} | {s}\n", .{ map.addr, map.addr + map.len - 1, map.typeStr() });
+            try w.print("region: {x:08} - {x:08} | {s}\n", .{ map.addr, map.addr + map.len - 1, map.typeStr() });
         }
     }
 }

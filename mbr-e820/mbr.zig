@@ -6,7 +6,7 @@ const bios = @import("bios.zig");
 
 // -- ENTRY POINT ---------------------------------------------------------------
 
-export fn _entry() linksection(".boot") callconv(.Naked) noreturn {
+export fn _entry() linksection(".boot") callconv(.naked) noreturn {
     asm volatile (
         // Disable interrupts.
         \\cli
