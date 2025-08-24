@@ -20,7 +20,7 @@ pub fn putc(c: u8) void {
         \\int $0x10
         : // No outputs.
         : [a] "{ax}" (ax), // BIOS call number + char to write.
-        : "cc"
+        : .{ .cc = true }
     );
 
     // On linefeed also write a carriage return to move to column 0.
@@ -61,7 +61,7 @@ pub fn e820(next_ebx: u32) ?struct { e820: E820, ebx: u32 } {
           [p] "{edi}" (&res), // Pointer to E820 entry.
           [m] "{edx}" (0x534D4150), // Magic number (b"SMAP").
         : // Clobbers.
-          "cc"
+        .{ .cc = true }
     );
 
     // Call failed if carry is set.

@@ -30,7 +30,10 @@ export fn kmain(ebx: u32) void {
     var con = vga.vga(10, 0).init;
     con.puts("Booting into kmain()\n\n");
 
-    mb.formatBootinfo(con.writer(), mb.bootinfo(ebx)) catch {};
+    var buf: [64]u8 = undefined;
+    var vw = con.writer(&buf);
+    mb.formatBootinfo(&vw.interface, mb.bootinfo(ebx)) catch {};
+    vw.interface.flush() catch {};
 
     dbg.panic("{s}:{}:{s}: done...", .{ @src().file, @src().line, @src().fn_name });
 }
@@ -43,7 +46,10 @@ fn panicHandler(msg: []const u8, first_trace_addr: ?usize) noreturn {
     _ = first_trace_addr;
 
     var con = vga.vga(11, 0).init;
-    fmt.format(con.writer(), "\nPANIC: {s}\n", .{msg}) catch {};
+    var buf: [64]u8 = undefined;
+    var vw = con.writer(&buf);
+    vw.interface.print("\nPANIC: {s}\n", .{msg}) catch {};
+    vw.interface.flush() catch {};
 
     while (true) {
         asm volatile ("hlt");
