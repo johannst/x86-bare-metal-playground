@@ -17,7 +17,7 @@
 // E820 entry
 //   base: u64,
 //   size: u64,
-//   kind: u32,
+//   kind: u32, // 1: usable, 2: reserved
 //   attr: u32, // ACPI 3.0 compat
 //
 // [1] https://wiki.osdev.org/Memory_Map_(x86)
@@ -93,7 +93,7 @@ e820:
         mov %di, %si
         call puts
 
-        // Prunt delimiter.
+        // Print delimiter.
         mov $'-', %al
         call putc
 
@@ -105,7 +105,17 @@ e820:
         mov %di, %si
         call puts
 
-        // Prunt newline.
+        // Print space.
+        mov $' ', %al
+        call putc
+
+        // Print the memory kind (e820.kind).
+        mov 16(%bx), %eax
+        call hexfmt
+        mov %di, %si
+        call puts
+
+        // Print newline.
         mov $'\n', %al
         call putc
         mov $'\r', %al
