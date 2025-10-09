@@ -22,7 +22,7 @@ TARGET-64 := x86_64-freestanding-none
 CPU-16 := i386
 CPU-32 := i386
 CPU-64 := generic
-zc = zig build-obj -target $(TARGET-$(1)) -mcpu $(CPU-$(1)) -O ReleaseSmall -fno-unwind-tables -fno-strip $(ZFLAGS) -femit-bin=$(2) $(3)
+zc = zig build-obj -target $(TARGET-$(1)) -mcpu $(CPU-$(1)) -O ReleaseSmall -fno-unwind-tables -fno-strip $(ZFLAGS) $(ZCFLAGS) -femit-bin=$(2) $(3)
 
 # Assembler command.
 # Arguments: 1-outfile 2-infile
