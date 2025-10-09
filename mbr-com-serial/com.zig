@@ -50,7 +50,7 @@ const BIT_TX_READY: u8 = (1 << 5);
 ///
 /// [1] https://wiki.osdev.org/Serial_Ports
 pub const Com = struct {
-    // Widelysed standardized address for COM1 port (eg also in qemu).
+    // Widely standardized address for COM1 port (eg also in qemu).
     pub const COM1: u16 = 0x3f8;
 
     base: u16,
