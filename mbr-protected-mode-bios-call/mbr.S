@@ -12,6 +12,14 @@ _entry:
     // Disable interrupts.
     cli
 
+    // Clear segment selectors.
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov fs, ax
+    mov gs, ax
+
     // Set CS to 0, as some BIOSes load the MBR to either 07c0:0000 or 0000:7c000.
     jmp 0:rm16
 
