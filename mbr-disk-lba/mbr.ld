@@ -8,10 +8,10 @@ SECTIONS {
     .boot     : {
         *(.boot)
     }
-    .text     : { *(.text) }
-    .data     : { *(.data) }
-    .bss      : { *(.bss) }
-    .rodata   : { *(.rodata) }
+    .text     : { *(.text*) }
+    .data     : { *(.data*) }
+    .bss      : { *(.bss*) }
+    .rodata   : { *(.rodata*) }
     _boot_end = .;
 
     . = 0x7c00 + 510;
