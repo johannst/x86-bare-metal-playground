@@ -29,8 +29,8 @@
 //
 // Every paging structure is 4096 bytes and in long mode each entry in a
 // paging structure is 8 bytes.
-// -> Each paging structure contains 512 entries.
-// -> Paging structures must be 4k aligned.
+//   -> Each paging structure contains 512 entries.
+//   -> Paging structures must be 4k aligned.
 // See Intel Manual Vol3 - Figure 4-11 Formats of CR3 and Paging-Structure
 //                         Entries with 4-Level Paging and 5-Level Paging.
 //
@@ -39,6 +39,25 @@
 //   - CR4.PAE =1
 //   - IA32_EFER.LME = 1
 //   - CR0.PG = 1
+//
+// When mapping a page using all 4 levels its size is 4K (single PT entry).
+// Larger pages can be mapped when setting the page size (7) bit in higher
+// levels of the page table hierarchy.
+//   - 2MB page: set page size bit in PD entry
+//   - 1GB page: set page size bit in PDPT entry
+//
+// With the support of long mode, 2MB pages are always supported. However,
+// 1GB pages are an optional feature and support can be checked via cpuid.
+//    mov eax, 0x80000001
+//    cpuid
+//
+//    test edx, (1 << 29)   // long mode supported?
+//    jz not_supported
+//    ..
+//
+//    test edx, (1 << 26)   // 1 GB pages supported?
+//    jz not_supported
+//    ..
 
 .intel_syntax noprefix
 
@@ -49,6 +68,14 @@
 _entry:
     // Disable interrupts.
     cli
+
+    // Clear segment selectors.
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov fs, ax
+    mov gs, ax
 
     // Set CS to 0, as some BIOSes load the MBR to either 07c0:0000 or 0000:7c000.
     jmp 0:rm16
@@ -73,39 +100,39 @@ rm16:
 
 .code32
 pm32:
-    // Setup a simple paging scheme, by just identity mapping the first 1GB.
+    // Setup a simple paging scheme, by just identity mapping the first 2MB.
     //
-    // In this example this is done by using 1GB pages, which means that only
-    // two paging structures must be used, where the second level already maps a
-    // page effectively. To be more precise, the entry 0 in the PDPT0 sets the
+    // In this example this is done by using 2MB pages, which means that only
+    // three paging structures must be used, where the third level already maps a
+    // page effectively. To be more precise, the entry 0 in the PD0 sets the
     // S bit (7), indicating that this entry maps a page rather than delegating
     // to another paging structure.
     //
-    // Since a single PDPT entry covers 512 PD entries, which in turn each cover
-    // 512 PT entries, where each PT entry covers a 4k Page, the PDPT entry
-    // covers 512 * 512 * 4096 bytes -> 1GB. Hence if a PDPT entry maps a page
-    // (S bit set), the entry maps a 1GB page.
+    // Since a single PD entry covers 512 PT entries, where each PT entry
+    // covers a 4K Page, the PDPT entry covers 512 * 4096 bytes -> 2MB.
+    // Hence if a PD entry maps a page (S bit set), the entry maps a 2MB page.
     //
-    // See Intel Manual Vol3 - Figure 4-10 Linear-Address Translation to a
-    //                         1-GByte Page using 4-Level Paging
+    // See Intel Manual Vol3 - Figure 4-9. Linear-Address Translation to a
+    //                         2-MByte Page using 4-Level Paging
 
 // Bits for entries in the paging structures.
 #define PG_PRESENT (1 << 0)
 #define PG_RW      (1 << 1)
 #define PG_SIZE    (1 << 7)
 
-// Address for the PML4 table and the PDPT0 table.
+// Address for the PML4, PDPT0, and PD0 table.
 #define PML4T 0x1000
 #define PDPT0 0x2000
+#define PD0   0x3000
 
 setup_page_table:
-    // Zero out PML4T and the PDPT0 tables.
+    // Zero out PML4T, PDPT0 and PD0 tables.
     xor eax, eax
-    mov ecx, 4096 * 2 / 4
+    mov ecx, 4096 / 4 * 3
     mov edi, PML4T
 1:
     mov [edi], eax
-    inc edi
+    add edi, 4
     loop 1b
 
     // Setup pointer to root paging structure in CR3.
@@ -115,8 +142,11 @@ setup_page_table:
     // Setup PML4TE0 entry to point to PDPT0.
     mov dword ptr [PML4T], PDPT0 | PG_RW | PG_PRESENT
 
-    // Setup PDPT0E0 entry as leaf marking a 1GB page, with physical addr 0.
-    mov dword ptr [PDPT0], 0x00000000 | PG_SIZE | PG_RW | PG_PRESENT
+    // Setup PDPT0E0 entry to point to PD0.
+    mov dword ptr [PDPT0], PD0 | PG_RW | PG_PRESENT
+
+    // Setup PD0E0 entry as leaf marking a 2MB page, with physical addr 0.
+    mov dword ptr [PD0], 0x00000000 | PG_SIZE | PG_RW | PG_PRESENT
 
 enable_paging:
     // Set CR4.PAE = 1.
