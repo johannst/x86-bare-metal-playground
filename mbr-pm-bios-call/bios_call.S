@@ -36,6 +36,9 @@
  */
 
 /* Segment selector chosen according to gdt in mbr.S */
+#define PM16_CS 0x18
+#define PM32_CS 0x08
+#define PM32_DS 0x10
 
 .code32
 .global bios_call
@@ -53,7 +56,7 @@ bios_call:
     pushad
 
     // Load 16-bit protected mode cs.
-    jmp 0x18:pm16
+    jmp PM16_CS:pm16
 .code16
 pm16:
     // Disable protected mode.
@@ -136,7 +139,11 @@ pm16:
 
     // Load register state for the bios call from the register pointer
     // passed as function argument.
+    mov edi, [eax + EDI_OFFSET]
+    mov esi, [eax + ESI_OFFSET]
     mov ebx, [eax + EBX_OFFSET]
+    mov edx, [eax + EDX_OFFSET]
+    mov ecx, [eax + ECX_OFFSET]
     mov eax, [eax + EAX_OFFSET]
 
     // Invoke bios interrupt.
@@ -145,15 +152,29 @@ pm16:
     iretw
 bcret:
     // Push register to stack to update register state function argument.
-    push eax
-    push ebx
+    push eax;
+    push ecx;
+    push edx;
+    push ebx;
+    push esp;
+    push ebp;
+    push esi;
+    push edi;
+    pushfd
 
     // Fetch function argument (arg1) for register state pointer.
-    // Offset adjusted for two registers pushed just above.
-    mov  eax, dword ptr [esp + 4 * 10 + 4 * 2]
+    // Offset adjusted for nine registers pushed just above.
+    mov  eax, dword ptr [esp + 4 * 10 + 4 * 9]
 
     // Update register state structure.
+    pop dword ptr [eax + EFLAGS_OFFSET]
+    pop dword ptr [eax + EDI_OFFSET]
+    pop dword ptr [eax + ESI_OFFSET]
+    pop dword ptr [eax + EBP_OFFSET]
+    pop dword ptr [eax + ESP_OFFSET]
     pop dword ptr [eax + EBX_OFFSET]
+    pop dword ptr [eax + EDX_OFFSET]
+    pop dword ptr [eax + ECX_OFFSET]
     pop dword ptr [eax + EAX_OFFSET]
 
     // Enable protected mode.
@@ -162,11 +183,11 @@ bcret:
     mov cr0, eax
 
     // Load 32-bit protected mode cs.
-    jmp 0x8:bcret32
+    jmp PM32_CS:bcret32
 .code32
 bcret32:
     // Load 32-bit protected mode segment selectors.
-    mov ax, 0x10
+    mov ax, PM32_DS
     mov ds, ax
     mov es, ax
     mov ss, ax
