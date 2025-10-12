@@ -42,6 +42,11 @@ mk = @mkdir -p $(dir $(1))
 # Arguments: 1-short-cmd-name 2-short-file-name 3-real-command
 vcmd = @ $(if $(filter-out 0,$(V)),printf "$(3)\n",printf "%-12s %s\n" "$(1)" "$(notdir $(2))") ; $(3)
 
+# -- INFRA RULES ---------------------------------------------------------------
+
+clea%:
+	$(RM) -r $(B)
+
 # -- BUILD RULES ---------------------------------------------------------------
 #
 # The following provide some default rules which can be used in down-stream
