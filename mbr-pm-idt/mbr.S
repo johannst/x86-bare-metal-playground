@@ -50,17 +50,23 @@ pm32:
     mov fs, ax
     mov gs, ax
 
-    // Patch offset in IDT entry0.
+    // Patch offset in IDT gate 0.
     lea eax, [int0_handler]
     mov word ptr[pm_idt + 8 * 0 + 0], ax
     shr eax, 16
     mov word ptr[pm_idt + 8 * 0 + 6], ax
 
-    // Patch offset in IDT entry1.
+    // Patch offset in IDT gate 1.
     lea eax, [int1_handler]
     mov word ptr[pm_idt + 8 * 1 + 0], ax
     shr eax, 16
     mov word ptr[pm_idt + 8 * 1 + 6], ax
+
+    // Patch offset in IDT gate 8.
+    lea eax, [int8_handler]
+    mov word ptr[pm_idt + 8 * 8 + 0], ax
+    shr eax, 16
+    mov word ptr[pm_idt + 8 * 8 + 6], ax
 
     // Load the IDT desciptor.
     lidt [pm_idt_descriptor]
@@ -75,6 +81,9 @@ pm32:
     mov word ptr[0xb8006], 0xa00 | 'I'
     mov word ptr[0xb8008], 0xa00 | 'D'
     mov word ptr[0xb800a], 0xa00 | 'T'
+
+    // Trigger a double fault because int 4 gate is not present.
+    int 4
 1:
     hlt
     jmp 1b
@@ -93,11 +102,21 @@ int1_handler:
     mov word ptr[0xb80ae], 0xc00 | '1'
     iret
 
+int8_handler:
+    mov word ptr[0xb80b0], 0xd00 | 'I'
+    mov word ptr[0xb80b2], 0xd00 | 'N'
+    mov word ptr[0xb80b4], 0xd00 | 'T'
+    mov word ptr[0xb80b6], 0xd00 | '8'
+1:
+    // Treat double fault as fatal.
+    hlt
+    jmp 1b
+
 // The interrupt descriptor table (IDT) in 32-bit protected consists
-// of up to 256 entries (can be less). Each entry describes one
+// of up to 256 entries (can be less). Each gate (entry) describes one
 // interrupt / trap and is 8-bytes long.
 //
-// 32-bit IDT entry [1]
+// 32-bit IDT gate [1]
 //   u16 offset15_0
 //   u16 selector
 //   u8  unused
@@ -109,17 +128,30 @@ int1_handler:
 // Protected mode (32 bit) idt table.
 .balign 8
 pm_idt:
-// Entry 0
+// Gate 0
 .2byte 0    // offset15_0
 .2byte 0x8  // cs
-.byte 0
-.byte 0x8F  // present + 32-bit trap gate
+.byte 0     // (unused)
+.byte 0x8F  // present, dpl=0, 32-bit trap gate
 .2byte 0    // offset31_16
-// Entry 1
+// Gate 1
 .2byte 0    // offset15_0
 .2byte 0x8  // cs
-.byte 0
-.byte 0x8F  // present + 32-bit trap gate
+.byte 0     // (unused)
+.byte 0x8F  // present, dpl=0, 32-bit trap gate
+.2byte 0    // offset31_16
+// Gate 2 - Gate 7 (not present)
+.8byte 0
+.8byte 0
+.8byte 0
+.8byte 0
+.8byte 0
+.8byte 0
+// Gate 8 - double fault handler (exception during exception handling).
+.2byte 0    // offset15_0
+.2byte 0x8  // cs
+.byte 0     // (unused)
+.byte 0x8F  // present, dpl=0, 32-bit trap gate
 .2byte 0    // offset31_16
 pm_idt_end:
 
