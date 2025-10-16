@@ -112,7 +112,7 @@ int8_handler:
     hlt
     jmp 1b
 
-// The interrupt descriptor table (IDT) in 32-bit protected consists
+// The interrupt descriptor table (IDT) in 32-bit protected mode consists
 // of up to 256 entries (can be less). Each gate (entry) describes one
 // interrupt / trap and is 8-bytes long.
 //
@@ -124,6 +124,7 @@ int8_handler:
 //   u16 offset31_16
 //
 // [1] https://wiki.osdev.org/Interrupt_Descriptor_Table#Gate_Descriptor
+// [2] Intel Manual Vol3 - 6.11 IDT descriptors
 
 // Protected mode (32 bit) idt table.
 .balign 8

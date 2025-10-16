@@ -47,8 +47,8 @@ entry_rm16:
     lea si, [lba_pkt]
     int 0x13
 
-    // BIOS on my laptop does not restore EFLAGS properly after this BIOS
-    // interrupt. It keeps the IF flag enabled.
+    // Quirk: BIOS on my laptop does not restore EFLAGS properly after
+    // this BIOS interrupt. It keeps the IF flag enabled.
     cli
 
     jnc 2f
