@@ -2,6 +2,25 @@
 //
 // Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
 
+// This example sets up a protected mode IDT with a few IDT gates (vector
+// entries).
+//
+// The IDT can have up to 255 gates, and gates 0-31 are reserved for exceptions [1].
+// On exception (w/o privilege change), the following is pushed on the stack
+//     eflags, cs, eip, (error code)
+// Some exceptions push an error code, but not all of them, see the table in [1].
+//
+// Note: In this example we are using the `int N` instruction to invoke
+// interrupt the handler. This will never push an error code onto the stack,
+// even if the hardware generated exception would do so. Additionally, with `intN`,
+// the eip pushed is the address after the `int N` instruction. For hardware
+// exceptions that may not be true, some exceptions push the address of the
+// faulting instruction, such that a iret can retry the instruction. The list in [2]
+// gives details about each hardware generated exception.
+//
+// [1] Intel Manual Vol3 - 6.3.1 External Interrupts
+// [2] Intel Manual Vol3 - 6.15 Exception and Interrupt reference
+
 .intel_syntax noprefix
 
 .code16
