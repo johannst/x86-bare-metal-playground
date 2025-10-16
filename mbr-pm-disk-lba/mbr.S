@@ -29,7 +29,7 @@ lba_pkt:
     .byte 0x10     // Size of this disk packet in bytes (16).
     .byte 0        // Reserved.
     .2byte 2       // Number of blocks to read (sectors 512 bytes?) to read.
-    .4byte 0x7e00  // Destination address.
+    .4byte 0x7e00  // Destination address (seg16:off16).
     .8byte 1       // Starting lba block number (0 indexed, MBR is at 0).
 
 entry_rm16:

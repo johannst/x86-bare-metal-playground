@@ -7,6 +7,12 @@ const bios = @cImport({
     @cInclude("bios_call.h");
 });
 
+/// A real mode segmented address.
+const SegOff = extern struct {
+    off: u16 = 0,
+    seg: u16 = 0,
+};
+
 const DiskAddressPacket = extern struct {
     /// Size of this disk packet in bytes.
     pkt_size: u8 = @sizeOf(DiskAddressPacket),
@@ -18,7 +24,8 @@ const DiskAddressPacket = extern struct {
     num_blks: u16,
 
     /// Destination address, where the read sectors should be written to.
-    dest_addr: u32,
+    /// This is a real mode segmented address.
+    dest_addr: SegOff,
 
     /// Block number (LBA) to start reading from (0 indexed, MBR is at 0).
     start_blk: u64,
@@ -43,7 +50,7 @@ extern const _stage2_end: u8;
 fn load_stage2(boot_disk: u32) !void {
     const dap = DiskAddressPacket{
         .num_blks = @truncate((&_stage2_end - &_stage2_start) / 512),
-        .dest_addr = @intFromPtr(&_stage2_start),
+        .dest_addr = .{ .off = @truncate(@intFromPtr(&_stage2_start)) },
         .start_blk = 1,
     };
 
