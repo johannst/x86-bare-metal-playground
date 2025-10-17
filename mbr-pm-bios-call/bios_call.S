@@ -2,9 +2,17 @@
 //
 // Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
 
-#define ASM
-#include "bios_call.h"
-#undef ASM
+#define EAX_OFFSET    0x00
+#define ECX_OFFSET    0x04
+#define EDX_OFFSET    0x08
+#define EBX_OFFSET    0x0c
+#define ESP_OFFSET    0x10
+#define EBP_OFFSET    0x14
+#define ESI_OFFSET    0x18
+#define EDI_OFFSET    0x1c
+#define EFLAGS_OFFSET 0x20
+
+#ifndef ASM_INCLUDE_ONLY
 
 .intel_syntax noprefix
 .text
@@ -198,3 +206,5 @@ bcret32:
     popad
 
     ret
+
+#endif // ASM_INCLUDE_ONLY
