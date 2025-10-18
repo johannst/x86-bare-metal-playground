@@ -2,11 +2,6 @@
 //
 // Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
 
-const c = @cImport({
-    @cDefine("ASM_INCLUDE_ONLY", "1");
-    @cInclude("bios_call.S");
-});
-
 pub const RegisterState = extern struct {
     eax: u32,
     ecx: u32,
@@ -18,14 +13,24 @@ pub const RegisterState = extern struct {
     edi: u32,
     eflags: u32,
 
-    fn cf(self: *const @This()) bool {
+    pub fn cf(self: *const @This()) bool {
         return (self.eflags & 1) != 0;
     }
 };
 
+/// Invoke a bios call defined by the interrupt number `irq` and the
+/// register state in `regs`. The register parameter is an inout
+/// parameter, as it will be updated to hold the register state directly
+/// after the bios call.
+/// This can only be used during early boot as it assumes a given
+/// environment, see bios_call.S for more information.
 pub extern fn bios_call(irq: u8, regs: *RegisterState) void;
 
-comptime {
+test "offset" {
+    const c = @cImport({
+        @cDefine("ASM_INCLUDE_ONLY", "1");
+        @cInclude("bios_call.S");
+    });
     const assert = @import("std").debug.assert;
     assert(@offsetOf(RegisterState, "eax") == c.EAX_OFFSET);
     assert(@offsetOf(RegisterState, "ecx") == c.ECX_OFFSET);

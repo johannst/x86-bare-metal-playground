@@ -3,9 +3,7 @@
 // Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
 
 const std = @import("std");
-const bios = @cImport({
-    @cInclude("bios_call.h");
-});
+const bios = @import("bios_call.zig");
 
 /// A real mode segmented address.
 const SegOff = extern struct {

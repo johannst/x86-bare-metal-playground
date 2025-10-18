@@ -3,9 +3,7 @@
 // Copyright (c) 2025, Johannes Stoelp <dev@memzero.de>
 
 const std = @import("std");
-const bios = @cImport({
-    @cInclude("bios_call.h");
-});
+const bios = @import("bios_call.zig");
 
 pub export fn stage2_entry() void {
     var regs = std.mem.zeroes(bios.RegisterState);

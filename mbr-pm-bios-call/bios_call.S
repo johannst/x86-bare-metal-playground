@@ -117,7 +117,8 @@ pm16:
      *   mode, the IDT is called the interrupt vector table, and its
      *   pointers are called interrupt vectors.)
      *
-     * IVT entry [3]
+     * A single entry in the IVT is 4 bytes and represents the
+     * segmented address (far pointer) of the interrupt handler [3].
      *   +-----------+-----------+
      *   |  Segment  |  Offset   |
      *   +-----------+-----------+
