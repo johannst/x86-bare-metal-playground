@@ -10,13 +10,16 @@
 //     eflags, cs, eip, (error code)
 // Some exceptions push an error code, but not all of them, see the table in [1].
 //
-// Note: In this example we are using the `int N` instruction to invoke
-// interrupt the handler. This will never push an error code onto the stack,
+// Note: In this example we are using the `int N` instruction to invoke the
+// interrupt handler. This will never push an error code onto the stack,
 // even if the hardware generated exception would do so. Additionally, with `intN`,
 // the eip pushed is the address after the `int N` instruction. For hardware
 // exceptions that may not be true, some exceptions push the address of the
 // faulting instruction, such that a iret can retry the instruction. The list in [2]
 // gives details about each hardware generated exception.
+//
+// We invoke the reserved exception numbers because that suffices to setup a
+// small IDT with just a few entries.
 //
 // [1] Intel Manual Vol3 - 6.3.1 External Interrupts
 // [2] Intel Manual Vol3 - 6.15 Exception and Interrupt reference
@@ -200,8 +203,8 @@ lm64_idt:
 // Gate 0
 .2byte 0    // offset15_0
 .2byte 0x8  // cs
-.byte 0     // (unused)
-.byte 0x8F  // present, dpl=0, 32-bit trap gate
+.byte  0    // (unused)
+.byte  0x8F // present, dpl=0, 32-bit trap gate
 .2byte 0    // offset31_16
 .8byte 0    // offset63_32
 lm64_idt_end:
