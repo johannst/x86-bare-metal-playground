@@ -102,7 +102,7 @@ pub const Madt = extern struct {
 
     pub fn payload(self: *const Madt) ?[]const u8 {
         const p = self.hdr.payload() orelse return null;
-        // Re-slice additional madt fields..
+        // Re-slice additional madt fields.
         return p[@sizeOf(Madt) - @sizeOf(Header) ..];
     }
 
@@ -156,11 +156,56 @@ pub const Madt = extern struct {
     };
 };
 
+/// Memory-Mapped Configuration Space Description Table.
+///
+/// This is defined in the PCI firmware spec, and not part of the ACPI spec.
+/// The PCI spec is behind a paywall, this information was taken from [1].
+///
+/// With the enhanced configuartion space one can get the physical address to
+/// the start of a PCI functions configuration space as follows.
+///     base_addr | (bus << 20) | (dev << 15) | (func << 12)
+///
+/// The physical address per PCI function configuration space spans 4096 bytes
+/// (12 bits), which coves the extended (pcie) config space, the first 256 bytes
+/// are the compatible (pci) config space [2].
+///
+/// Seems that there are also some leaked pdfs out there.
+/// - PCI Local Bus Specification Revision 3.0
+/// - PCI Firmware Specification Revision 3.3
+///
+/// [1] https://wiki.osdev.org/PCI_Express#Enhanced_Configuration_Mechanism
+/// [2] https://wiki.osdev.org/PCI#PCI_Device_Structure
+pub const Mcfg = extern struct {
+    hdr: Header,
+    reserved: u64,
+
+    pub const PciConfigSegment = extern struct {
+        base_addr: u64,
+        pci_segment: u16,
+        bus_start: u8,
+        bus_end: u8,
+        reserved: u32,
+    };
+
+    pub fn payload(self: *const Mcfg) ?[]const PciConfigSegment {
+        if (self.hdr.length <= @sizeOf(Mcfg))
+            return null;
+        const n = (self.hdr.length - @sizeOf(Mcfg)) / @sizeOf(PciConfigSegment);
+        const b = @as([*]const u8, @ptrCast(self))[@sizeOf(Mcfg)..];
+        return @as([*]const PciConfigSegment, @ptrCast(@alignCast(b)))[0..n];
+    }
+};
+
 comptime {
     const assert = std.debug.assert;
+
+    // PCI values are little endian, only support little endian targets.
+    assert(@import("builtin").target.cpu.arch.endian() == .little);
+
     assert(@sizeOf(Rsdp) == 36);
     assert(@offsetOf(Rsdp, "length") == 20);
     assert(@offsetOf(Rsdp, "extended_checksum") == 32);
     assert(@sizeOf(Header) == 36);
     assert(@offsetOf(Header, "creator_revision") == 32);
+    assert(@sizeOf(Mcfg.PciConfigSegment) == 16);
 }

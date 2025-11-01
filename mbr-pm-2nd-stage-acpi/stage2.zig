@@ -5,12 +5,19 @@
 const std = @import("std");
 const bios = @import("bios_call.zig");
 const acpi = @import("shared/acpi.zig");
-const vga = @import("shared/vga.zig");
+const pci = @import("shared/pci.zig");
+
+var iob: [64]u8 = undefined;
+var iow: ?*std.Io.Writer = null;
 
 pub export fn stage2_entry() void {
-    var vgabuf = vga.vga(.light_green, .black).init;
-    var buf: [32]u8 = undefined;
-    var writer = vgabuf.writer(&buf);
+    //const vga = @import("shared/vga.zig");
+    //var vgactx = vga.vga(.light_green, .black).init;
+    //var writer = vgactx.writer(&iob);
+    const com = @import("shared/com.zig");
+    var comctx = com.Com.init(com.Com.COM1);
+    var writer = comctx.writer(&iob);
+    iow = &writer.interface;
 
     acpiDumpDescriptorTables(&writer.interface) catch |err| {
         writer.print("Failed to dump acpi tables {}", .{err});
@@ -84,12 +91,13 @@ fn acpiWalkRsdt(w: *std.Io.Writer, comptime T: type, paddr: T) !void {
     var payload = rsdt.payload() orelse return error.RsdtNoPayload;
     while (@sizeOf(T) <= payload.len) : (payload = payload[@sizeOf(T)..]) {
         // Read physical address of next table.
-        const sdt_paddr = std.mem.readVarInt(T, payload[0..@sizeOf(T)], .little);
+        const sdt_paddr = std.mem.readInt(T, payload[0..@sizeOf(T)], .little);
         // Turn address into pointer to the table header.
         const sdt_hdr: *const acpi.Header = @ptrFromInt(try toUsizeSafe(sdt_paddr));
 
         switch (sigToInt(&sdt_hdr.signature)) {
             sigToInt("APIC") => try acpiDumpMadt(w, @ptrCast(sdt_hdr)),
+            sigToInt("MCFG") => try acpiDumpMcfg(w, @ptrCast(sdt_hdr)),
             else => try w.print("@0x{x:08} table {s}\n", .{ sdt_paddr, sdt_hdr.signature }),
         }
     }
@@ -124,6 +132,79 @@ fn acpiDumpMadt(w: *std.Io.Writer, madt: *const acpi.Madt) !void {
     }
 }
 
+/// Dump the MCFG (Memory-mapped Configuration Space Description Table) entries.
+fn acpiDumpMcfg(w: *std.Io.Writer, mcfg: *const acpi.Mcfg) !void {
+    std.debug.assert(mcfg.hdr.validSignature("MCFG".*));
+
+    // Go through all pci busses and devices print available functions.
+    const configs = mcfg.payload() orelse return error.McfgNoPayload;
+    for (configs) |conf| {
+        for (conf.bus_start..conf.bus_end) |bus| {
+            for (0..32) |dev| {
+                try dumpPciFunctionConfigSpace(w, conf.base_addr, @intCast(bus), @intCast(dev), 0);
+            }
+        }
+    }
+}
+
+///
+fn dumpPciFunctionConfigSpace(w: *std.Io.Writer, base_addr: u64, bus: u8, dev: u5, func: u3) !void {
+    // The base address is relative to the bus 0. Each config space spans 4096 bytes (12 bits).
+    const paddr = base_addr | (@as(u64, bus) << 20) | (@as(u64, dev) << 15) | (@as(u64, func) << 12);
+    const funcp = @as(*pci.ConfigSpaceHeader, @ptrFromInt(try toUsizeSafe(paddr)));
+
+    // Skip, invalid vendor id.
+    if (funcp.vendor_id == 0xffff)
+        return;
+
+    // Skip, only handle general PCI functions (eg no 01h pci-to-pci bridge, 02h cardbus bridge).
+    if (funcp.header.type != 0)
+        return;
+
+    try w.print("{x:02}:{x:02}.{x:02} v:d={x:04}:{x:04} sv:sd={x:04}:{x:04} class={x} subclass={x} caps={}\n", .{
+        bus,
+        dev,
+        func,
+        funcp.vendor_id,
+        funcp.device_id,
+        funcp.subvendor_id,
+        funcp.subdevice_id,
+        funcp.class,
+        funcp.subclass,
+        (funcp.status >> 4) & 1,
+    });
+
+    // Dump any IO or MMIO base address register (bar).
+    var idx: usize = 0;
+    while (idx < funcp.bar.len) : (idx += 1) {
+        // Skip, unused bar.
+        if (funcp.bar[idx] == 0)
+            continue;
+
+        const prefix, const base, const size = brk: {
+            if (pci.Bar.is64(funcp.bar[idx])) {
+                std.debug.assert(idx < funcp.bar.len - 1);
+                // Consume next bar, as this was a 64 bit bar.
+                defer idx += 1;
+
+                var bar = pci.Bar64{ .regl = &funcp.bar[idx], .regh = &funcp.bar[idx + 1] };
+                break :brk .{ "mmio64", bar.base(), bar.size() };
+            } else {
+                var bar = pci.Bar{ .reg = &funcp.bar[idx] };
+                break :brk .{ if (bar.io()) "i/o" else "mmio32", bar.base(), bar.size() };
+            }
+        };
+        try w.print("{s:8} {x}-{x} [{x}]\n", .{ prefix, base, base + size, size });
+    }
+
+    // If multi-function device, dump other functions as well.
+    if (func == 0 and funcp.header.multi_function) {
+        for (1..7) |subfunc| {
+            try dumpPciFunctionConfigSpace(w, base_addr, bus, dev, @truncate(subfunc));
+        }
+    }
+}
+
 // -- HELPER -------------------------------------------------------------------
 
 // This example runs in 32-bit protected mode, some addresses in the acpi tables
@@ -146,12 +227,10 @@ pub const panic = std.debug.FullPanic(panicHandler);
 
 // Panic handler which prints the error onto the VGA text buffer.
 fn panicHandler(msg: []const u8, first_trace_addr: ?usize) noreturn {
-    var vgabuf = vga.vga(11, 0x0).init;
-    var buf: [32]u8 = undefined;
-    var writer = vgabuf.writer(&buf);
-
-    writer.print("\nPANIC @0x{x:08}: {s}\n", .{ first_trace_addr orelse 0, msg });
-    writer.flush();
+    if (iow) |w| {
+        w.print("\nPANIC @0x{x:08}: {s}\n", .{ first_trace_addr orelse 0, msg }) catch {};
+        w.flush() catch {};
+    }
 
     while (true) {
         asm volatile ("hlt");

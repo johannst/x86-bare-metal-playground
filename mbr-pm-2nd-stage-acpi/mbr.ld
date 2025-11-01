@@ -41,6 +41,7 @@ SECTIONS {
         KEEP(*/stage2-32*.o(.text*))
         KEEP(*/stage2-32*.o(.data*))
         KEEP(*/stage2-32*.o(.rodata*))
+        KEEP(*/stage2-32*.o(.bss*))
         /* compiler_rt: include code/data used, we link with gc-sections */
         *libcompiler_rt*.o(.text.*)
         *libcompiler_rt*.o(.data.*)
