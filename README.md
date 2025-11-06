@@ -71,7 +71,11 @@ Keypoints of each experiment:
   boot multiple processors by sending INIT-SIPI *inter processor interrupts
   (IPI)* to the application processors (AP) from the bootstrap processor (BSP).
 - [`mbr-pm-enter-user`](mbr-pm-enter-user/): Implement minimal example to
-  transition between kernel (ring 0) and user (ring 3) privilege level.
+  transition between kernel (ring 0) and user (ring 3) privilege level in 32-bit
+  protected mode.
+- [`mbr-lm-enter-user`](mbr-lm-enter-user/): Implement minimal example to
+  transition between kernel (ring 0) and user (ring 3) privilege level in 64-bit
+  long mode.
 
 ## MBR
 
