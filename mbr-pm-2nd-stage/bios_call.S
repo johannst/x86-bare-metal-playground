@@ -161,14 +161,14 @@ pm16:
     iretw
 bcret:
     // Push register to stack to update register state function argument.
-    push eax;
-    push ecx;
-    push edx;
-    push ebx;
-    push esp;
-    push ebp;
-    push esi;
-    push edi;
+    push eax
+    push ecx
+    push edx
+    push ebx
+    push esp
+    push ebp
+    push esi
+    push edi
     pushfd
 
     // Fetch function argument (arg1) for register state pointer.
