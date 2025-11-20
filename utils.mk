@@ -12,7 +12,7 @@ LDSCRIPT ?= mbr.ld
 VERBOSE-2 := --verbose-cc --verbose-link
 
 # Zig compiler command.
-# Arguments: 1-bitness(16/32) 2-mode(rel/dbg) 3-outfile 4-infile
+# Arguments: 1-bitness(16/32/64) 2-mode(rel/dbg) 3-outfile 4-infile
 #
 # When building the kernel we explicitly let the zig compiler emit code for a
 # very old cpu. This way we ensure it does not emit any sse instructions, which
@@ -29,11 +29,11 @@ OPT-dbg := Debug
 zc = zig build-obj -target $(TARGET-$(1)) -mcpu $(CPU-$(1)) -O $(OPT-$(2)) -fno-unwind-tables -fno-strip $(ZFLAGS) $(ZCFLAGS) -femit-bin=$(3) $(4) $(VERBOSE-$(V))
 
 # Assembler command.
-# Arguments: 1-outfile 2-infile
 as = $(CC) -c -m$(1) -ffreestanding -o $(2) $(3)
+# Arguments: 1-bitness(16/32/64) 2-outfile 3-infile
 
 # Linker command.
-# Arguments: 1-outfile 2-infile(s)
+# Arguments: 1-bitness(16/32/64) 2-outfile 3-infile(s)
 ld = zig build-exe -target $(TARGET-$(1)) -mcpu $(CPU-$(1)) -O ReleaseSmall -fno-unwind-tables -fno-strip $(ZFLAGS) -fno-entry --script $(LDSCRIPT) -femit-bin=$(2) $(3) $(VERBOSE-$(V))
 
 # -- UTILITY FUNCS -------------------------------------------------------------
