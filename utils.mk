@@ -26,11 +26,11 @@ CPU-32 := i386
 CPU-64 := generic
 OPT-rel := ReleaseSmall
 OPT-dbg := Debug
-zc = zig build-obj -target $(TARGET-$(1)) -mcpu $(CPU-$(1)) -O $(OPT-$(2)) -fno-unwind-tables -fno-strip $(ZFLAGS) $(ZCFLAGS) -femit-bin=$(3) $(4) $(VERBOSE-$(V))
+zc = zig build-obj -target $(TARGET-$(1)) -mcpu $(CPU-$(1)) -O $(OPT-$(2)) -fno-unwind-tables -fno-strip -mno-red-zone $(ZFLAGS) $(ZCFLAGS) -femit-bin=$(3) $(4) $(VERBOSE-$(V))
 
 # Assembler command.
-as = $(CC) -c -m$(1) -ffreestanding -o $(2) $(3)
 # Arguments: 1-bitness(16/32/64) 2-outfile 3-infile
+as = $(CC) -c -m$(1) -ffreestanding -mno-red-zone -o $(2) $(3)
 
 # Linker command.
 # Arguments: 1-bitness(16/32/64) 2-outfile 3-infile(s)
