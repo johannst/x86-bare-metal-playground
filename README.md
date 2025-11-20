@@ -47,12 +47,14 @@ Keypoints of each experiment:
 - [`mbr-pm-palette/`](mbr-pm-palette): Switch to VGA graphics video mode and
   enter 32-bit *protected mode*, then print the color palette of the selected
   graphics mode to the screen.
+- [`mbr-pm-cpuid/`](mbr-pm-cpuid): Collect cpu features with the `cpuid`
+  instruction.
 - [`mbr-lm-enter-asm/`](mbr-lm-enter-asm): Enter 64-bit *long mode* by setting
   up an *idendity mapped* page table. This example is purely done in asm.
 - [`mbr-pm-idt/`](mbr-pm-idt): Enter 32-bit *protected mode* and setup an
   *interrupt description table (IDT)*. Then trigger software interrupts using
   the `int` instruction.
-- [`mbr-pm-idt/`](mbr-pm-idt): Enter 64-bit *long mode* and setup an *interrupt
+- [`mbr-lm-idt/`](mbr-lm-idt): Enter 64-bit *long mode* and setup an *interrupt
   description table (IDT)*. Then trigger software interrupts using the `int`
   instruction.
 - [`mbr-pm-disk-lba/`](mbr-pm-disk-lba): Use the [*extended read*](http://www.ctyme.com/intr/rb-0708.htm)
