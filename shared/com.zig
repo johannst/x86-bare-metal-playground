@@ -127,6 +127,14 @@ const Writer = struct {
         w.interface.print(fmt, args) catch {};
     }
 
+    pub fn puts(w: *Writer, msg: []const u8) void {
+        w.interface.writeAll(msg) catch {};
+    }
+
+    pub fn putc(w: *Writer, byte: u8) void {
+        w.interface.writeByte(byte) catch {};
+    }
+
     pub fn flush(w: *Writer) void {
         w.interface.flush() catch {};
     }

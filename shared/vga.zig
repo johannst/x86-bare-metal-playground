@@ -155,6 +155,14 @@ pub fn vga(fg: ForegroundColor, bg: BackgroundColor) type {
                 w.interface.print(fmt, args) catch {};
             }
 
+            pub fn puts(w: *VgaWriter, msg: []const u8) void {
+                w.interface.writeAll(msg) catch {};
+            }
+
+            pub fn putc(w: *VgaWriter, byte: u8) void {
+                w.interface.writeByte(byte) catch {};
+            }
+
             pub fn flush(w: *VgaWriter) void {
                 w.interface.flush() catch {};
             }

@@ -72,12 +72,15 @@ Keypoints of each experiment:
 - [`mbr-pm-smp-boot-asm/`](mbr-pm-smp-boot-asm): Implement minimal example to
   boot multiple processors by sending INIT-SIPI *inter processor interrupts
   (IPI)* to the application processors (AP) from the bootstrap processor (BSP).
-- [`mbr-pm-enter-user`](mbr-pm-enter-user/): Implement minimal example to
+- [`mbr-pm-enter-user/`](mbr-pm-enter-user): Implement minimal example to
   transition between kernel (ring 0) and user (ring 3) privilege level in 32-bit
   protected mode.
-- [`mbr-lm-enter-user`](mbr-lm-enter-user/): Implement minimal example to
+- [`mbr-lm-enter-user/`](mbr-lm-enter-user): Implement minimal example to
   transition between kernel (ring 0) and user (ring 3) privilege level in 64-bit
   long mode.
+- [`mbr-pm-pmem/`](mbr-pm-pmem): Implement basic physical memory manager (PMM)
+  which allows to allocate physical memory. Initialize from free memory reported
+  by the e820 bios call.
 
 ## MBR
 
