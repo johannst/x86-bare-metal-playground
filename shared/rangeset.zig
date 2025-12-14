@@ -4,11 +4,6 @@
 
 const std = @import("std");
 
-/// A strongly type physical address.
-pub const PhysAddr = struct {
-    paddr: u64,
-};
-
 /// An inclusive range.
 /// Using C abi as this will be shared between 32 and 64 bit code at runtime.
 pub const Range = extern struct {
@@ -114,7 +109,7 @@ pub fn RangeSet(comptime N: u8) type {
             }
         }
 
-        pub fn alloc(self: *@This(), size: usize, comptime alignment: usize) ?PhysAddr {
+        pub fn alloc(self: *@This(), size: u64, comptime alignment: u64) ?u64 {
             if (size == 0 or !std.math.isPowerOfTwo(alignment))
                 return null;
 
@@ -129,7 +124,7 @@ pub fn RangeSet(comptime N: u8) type {
 
                 // Remove range (including front padding). Range valid, ignore error.
                 self.remove(.{ .start = range.start, .end = end }) catch unreachable;
-                return .{ .paddr = start };
+                return start;
             }
             return null;
         }
@@ -255,13 +250,13 @@ test "RangeSet" {
     // Invalid alignment.
     try expectEqual(null, testee.alloc(4, 3));
     // Valid allocations.
-    try expectEqual(PhysAddr{ .paddr = 0x0 }, testee.alloc(0x10, 8));
-    try expectEqual(PhysAddr{ .paddr = 0x10 }, testee.alloc(0x10, 8));
-    try expectEqual(PhysAddr{ .paddr = 0x20 }, testee.alloc(1, 1));
-    try expectEqual(PhysAddr{ .paddr = 0x21 }, testee.alloc(1, 1));
+    try expectEqual(0x0, testee.alloc(0x10, 8));
+    try expectEqual(0x10, testee.alloc(0x10, 8));
+    try expectEqual(0x20, testee.alloc(1, 1));
+    try expectEqual(0x21, testee.alloc(1, 1));
     // Allocation which has front padding.
-    try expectEqual(PhysAddr{ .paddr = 0x24 }, testee.alloc(4, 4));
+    try expectEqual(0x24, testee.alloc(4, 4));
     // Consume remaining memory.
-    try expectEqual(PhysAddr{ .paddr = 0x28 }, testee.alloc(8, 4));
+    try expectEqual(0x28, testee.alloc(8, 4));
     try expect(testee.used == 0);
 }

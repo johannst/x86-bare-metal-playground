@@ -100,7 +100,7 @@ pub export fn stage2() void {
 
     // Allocate some pages.
     for (0..5) |_| {
-        iow.print("page {x}\n", .{pmem.alloc(4096, 4096).?.paddr});
+        iow.print("page {x}\n", .{pmem.alloc(4096, 4096).?});
     }
 
     // Print free memory.
