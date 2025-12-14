@@ -109,7 +109,7 @@ pub fn RangeSet(comptime N: u8) type {
             }
         }
 
-        pub fn alloc(self: *@This(), size: u64, comptime alignment: u64) ?u64 {
+        pub fn alloc(self: *@This(), size: u64, alignment: u64) ?u64 {
             if (size == 0 or !std.math.isPowerOfTwo(alignment))
                 return null;
 

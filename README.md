@@ -81,6 +81,8 @@ Keypoints of each experiment:
 - [`mbr-pm-pmem/`](mbr-pm-pmem): Implement basic physical memory manager (PMM)
   which allows to allocate physical memory. Initialize from free memory reported
   by the e820 bios call.
+- [`mbr-lm-page-table/`](mbr-lm-page-table): Implement example which shows how
+  to mondify a page table and map physical memory into virtual address space.
 
 ## MBR
 
