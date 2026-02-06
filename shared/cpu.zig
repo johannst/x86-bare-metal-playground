@@ -23,6 +23,7 @@ inline fn cpuid(in_eax: u32, in_ecx: u32) struct { u32, u32, u32, u32 } {
 
 pub const Features = packed struct {
     vmx: bool,
+    x87: bool,
 
     syscall: bool,
     nx: bool,
@@ -53,6 +54,7 @@ pub fn features() Features {
     if (0x1 <= max_basic) {
         eax, ebx, ecx, edx = cpuid(0x1, 0);
         f.vmx = bit(ecx, 5);
+        f.x87 = bit(edx, 0);
     }
     if (0x8000_0001 <= max_extended) {
         eax, ebx, ecx, edx = cpuid(0x8000_0001, 0);
