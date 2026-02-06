@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (c) 2026, Johannes Stoelp <dev@memzero.de>
 {
   description = "x86 bare metal development environment";
 
@@ -19,6 +22,10 @@
         pkgs.grub2
         pkgs.libisoburn
       ];
+      shellHook = ''
+        # https://github.com/NixOS/nixpkgs/issues/270415
+        unset ZIG_GLOBAL_CACHE_DIR
+      '';
     };
   };
 }

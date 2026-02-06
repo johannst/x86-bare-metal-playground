@@ -14,6 +14,9 @@ nix develop
 
 # Run the multiboot experiment for example.
 nix develop --command make -C multiboot run
+
+# Drop into a  pure interactive development shell.
+nix develop -i -k USER -k HOME -k DISPLAY
 ```
 
 The sub-folders of the experiments follow a naming scheme with the following
