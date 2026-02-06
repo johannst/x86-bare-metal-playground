@@ -4,8 +4,12 @@
 
 include ../utils.mk
 
-ARGS-$(DBG) = -S -s
-ARGS-$(CON) = -nographic
+UI   ?= n
+UI-y := -serial stdio
+UI-n := -nographic
+
+ARGS-y      += $(UI-$(UI))
+ARGS-$(DBG) += -S -s
 
 build: $(B)/boot-32.bin check-offset check-rangeset check-entry-boot-32 check-mbr-boot-32
 
