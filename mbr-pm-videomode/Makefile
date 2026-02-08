@@ -16,7 +16,7 @@ build: $(B)/boot-32.bin check-offset check-rangeset check-entry-boot-32 check-mb
 $(B)/boot-32.elf: $(B)/mbr-32.o $(B)/bios_call-32.o $(B)/stage2-32.o
 
 run: $(B)/boot-32.bin
-	qemu-system-i386 -drive file=$<,format=raw $(ARGS-y) -m 2G
+	qemu-system-i386 -drive file=$<,format=raw $(ARGS-y) -m 2G -vga std
 
 check-offset: bios_call.zig
 	$(call vcmd,CHECK-OFFSET,$<,zig test $< -O Debug -lc -I.)

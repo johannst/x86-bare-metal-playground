@@ -7,12 +7,39 @@ const com = @import("shared/com.zig");
 const cpu = @import("shared/cpu.zig");
 const bios = @import("bios_call.zig");
 
+// Set video mode 13h, see [1] & [2].
+//   * 320x200 graphic mode
+//   * 256 colors (8bit per pixel)
+//   * 0xA0000 screen address
+//   * linear addressing [3]
+//
+// Set video mode 12h, see [1].
+//   * 640x480 graphic mode
+//   * 16 colors (4bit per pixel)
+//   * 0xA0000 screen address
+//   * planar addressing (4 planes) [3]
+//
+// Set video mode 6ah, see [1].
+//   * 800x600 graphic mode
+//   * 16 colors (4bit per pixel)
+//   * 0xA0000 screen address
+//   * planar addressing (4 planes) [3]
+//
+// [1] http://www.ctyme.com/intr/rb-0069.htm
+// [2] https://en.wikipedia.org/wiki/Mode_13h (shows color palette)
+// [3] http://www.techhelpmanual.com/89-video_memory_layouts.html
+// [4] https://github.com/qemu/seabios/blob/106549a4362f6b499da522f8f8f5ed9f98388f87/vgasrc/stdvgamodes.c#L283
+//
+const VIDEO_MODE = 0x13;
+//const VIDEO_MODE = 0x12;
+//const VIDEO_MODE = 0x6a;
+
 pub export fn stage2() void {
     var buf: [128]u8 = undefined;
     var com1 = com.Com.init(com.Com.COM1);
     var iow = com1.writer(&buf);
 
-    if (!setupVideoMode()) {
+    if (!setupVideoMode(VIDEO_MODE)) {
         iow.print("Failed to change video mode\n", .{});
         iow.flush();
         return;
@@ -37,16 +64,11 @@ pub export fn stage2() void {
 
 // -- SETUP VIDEO MODE ---------------------------------------------------------
 
-fn setupVideoMode() bool {
-    // Set video mode 13h, see [1].
-    //   * 320x200 graphic mode
-    //   * 256 colors (8bit per pixel)
-    //   * 0xA0000 screen address
-    //
-    // [1] http://www.ctyme.com/intr/rb-0069.htm
-    // [2] https://en.wikipedia.org/wiki/Mode_13h (shows color palette)
+fn setupVideoMode(mode: u8) bool {
+    // Set video mode int=10h, ah=00h, see [1].
+    // [1] http://www.ctyme.com/intr/int-10.htm
     var regs = std.mem.zeroes(bios.RegisterState);
-    regs.eax = 0x13;
+    regs.eax = mode;
     bios.bios_call(0x10, &regs);
 
     return !regs.cf();
@@ -116,107 +138,131 @@ const Vec3 = [3]f64;
 
 const Rect = struct { x: usize, y: usize, w: usize, h: usize };
 
-const Framebuffer = struct {
-    const Self = @This();
-    const COLS = 320;
-    const ROWS = 200;
+const Framebuffer = switch (VIDEO_MODE) {
+    0x13 => GenericFramebuffer(.linear, 320, 200),
+    0x12 => GenericFramebuffer(.planar, 640, 480),
+    0x6a => GenericFramebuffer(.planar, 800, 600),
+    else => @compileError(std.fmt.comptimePrint("Unsupported video mode {x}", .{VIDEO_MODE})),
+};
 
-    // Take a slice to 256-color VGA video memory (mode 13h graphic mode).
-    fb: []u8 = @as([*]u8, @ptrFromInt(0xA0000))[0 .. Self.COLS * Self.ROWS],
+const FbMemLayout = enum {
+    linear,
+    planar,
+};
 
-    fn clear(self: *Framebuffer) void {
-        const black = 0;
-        @memset(self.fb, black);
-    }
+// Create a framebuffer type which treats the VGA graphic segment starting at
+// 0xA000:0000 either with linear or planar memory layout. For the planar memory
+// layout this implementation only supports one plane, and hence one can only
+// use it as monochrome framebuffer.
+fn GenericFramebuffer(comptime layout: FbMemLayout, cols: comptime_int, rows: comptime_int) type {
+    return struct {
+        const Self = @This();
+        const COLS = cols;
+        const ROWS = rows;
 
-    fn clearRect(self: *Framebuffer, r: Rect) void {
-        const c0 = r.x;
-        const c1 = @min(r.x + r.w, Framebuffer.COLS);
-        const r0 = r.y;
-        const r1 = @min(r.y + r.h, Framebuffer.ROWS);
+        // Take a slice to VGA video memory (graphic mode).
+        fb: []u8 = @as([*]u8, @ptrFromInt(0xA0000))[0 .. Self.COLS * Self.ROWS],
 
-        for (r0..r1) |row| {
+        fn clear(self: *Self) void {
             const black = 0;
-            @memset(self.fb[row * Self.COLS + c0 .. row * Self.COLS + c1], black);
-        }
-    }
-
-    fn putPixel(self: *Framebuffer, x: usize, y: usize, color: u8) void {
-        self.fb[y * Self.COLS + x] = color;
-    }
-
-    // Draw line between point a and point b.
-    //
-    // To draw the line we walk along one axis and compute the value
-    // for the other axis. The strategy is to walk the axis which has
-    // more pixels as this results in more steps and hence more pixels
-    // to draw the line.
-    //
-    // (a) ###             -
-    //        ###          dy
-    //           ### (b)   -
-    //    |-- dx --|
-    //
-    // - For (dx > dy) -> walk the x-axis.
-    // - For (dx < dy) -> walk the y-axis.
-    //
-    // A line between point a and b in 2d space is described by the
-    // vector equation.
-    //   line(t) = a + t(b - a)   where t is [0..1]
-    //
-    // This can be written as linear equations.
-    //    x = ax + t(bx - ax)  (i)
-    //    y = ay + t(by - ay)  (ii)
-    //
-    // We can solve (i) for t.
-    //   t = (x - ax) / (bx - ax)
-    // ans substitute t in (ii).
-    //   y = ay + (by - ay) * (x - ax) / (bx - ax)
-    // which gives us an equation for y depending on x.
-    //
-    // This can be used when walking the x-axis to compute the
-    // correpsonding pixel for y.
-    //
-    // When walking the y-axis we solve the linear equations such that
-    // we get an equations for x depending on y.
-    //
-    // In the concrete implementation we do two things.
-    // - We transpose the vectors depending on whether we walk the x
-    //   or y axis.
-    // - We swap a and b such that we always walk from left to right.
-    //
-    // [1] https://en.wikipedia.org/wiki/Line_(geometry)#Vectors
-    fn line(self: *Framebuffer, a: Point, b: Point, color: u8) void {
-        var ax, var ay = a;
-        var bx, var by = b;
-        const steep = @abs(bx - ax) < @abs(by - ay);
-        if (steep) {
-            std.mem.swap(i32, &ax, &ay);
-            std.mem.swap(i32, &bx, &by);
-        }
-        if (ax > bx) {
-            std.mem.swap(i32, &ax, &bx);
-            std.mem.swap(i32, &ay, &by);
+            @memset(self.fb, black);
         }
 
-        var x = ax;
-        while (x < bx) : (x += 1) {
-            const y = ay + @divTrunc((by - ay) * (x - ax), (bx - ax));
+        fn clearRect(self: *Self, r: Rect) void {
+            const c0 = r.x;
+            const c1 = @min(r.x + r.w, Self.COLS);
+            const r0 = r.y;
+            const r1 = @min(r.y + r.h, Self.ROWS);
 
-            var xi = @as(usize, @intCast(x));
-            var yi = @as(usize, @intCast(y));
+            for (r0..r1) |row| {
+                const black = 0;
+                switch (comptime layout) {
+                    .linear => @memset(self.fb[row * Self.COLS + c0 .. row * Self.COLS + c1], black),
+                    .planar => @memset(self.fb[row * Self.COLS / 8 + c0 / 8 .. row * Self.COLS / 8 + c1 / 8], black),
+                }
+            }
+        }
 
+        fn putPixel(self: *Self, x: usize, y: usize, color: u8) void {
+            switch (comptime layout) {
+                .linear => self.fb[y * Self.COLS + x] = color,
+                .planar => self.fb[y * Self.COLS / 8 + x / 8] |= @as(u8, 1) << (7 - @as(u3, @truncate(x))),
+            }
+        }
+
+        // Draw line between point a and point b.
+        //
+        // To draw the line we walk along one axis and compute the value
+        // for the other axis. The strategy is to walk the axis which has
+        // more pixels as this results in more steps and hence more pixels
+        // to draw the line.
+        //
+        // (a) ###             -
+        //        ###          dy
+        //           ### (b)   -
+        //    |-- dx --|
+        //
+        // - For (dx > dy) -> walk the x-axis.
+        // - For (dx < dy) -> walk the y-axis.
+        //
+        // A line between point a and b in 2d space is described by the
+        // vector equation.
+        //   line(t) = a + t(b - a)   where t is [0..1]
+        //
+        // This can be written as linear equations.
+        //    x = ax + t(bx - ax)  (i)
+        //    y = ay + t(by - ay)  (ii)
+        //
+        // We can solve (i) for t.
+        //   t = (x - ax) / (bx - ax)
+        // ans substitute t in (ii).
+        //   y = ay + (by - ay) * (x - ax) / (bx - ax)
+        // which gives us an equation for y depending on x.
+        //
+        // This can be used when walking the x-axis to compute the
+        // correpsonding pixel for y.
+        //
+        // When walking the y-axis we solve the linear equations such that
+        // we get an equations for x depending on y.
+        //
+        // In the concrete implementation we do two things.
+        // - We transpose the vectors depending on whether we walk the x
+        //   or y axis.
+        // - We swap a and b such that we always walk from left to right.
+        //
+        // [1] https://en.wikipedia.org/wiki/Line_(geometry)#Vectors
+        fn line(self: *Self, a: Point, b: Point, color: u8) void {
+            var ax, var ay = a;
+            var bx, var by = b;
+            const steep = @abs(bx - ax) < @abs(by - ay);
             if (steep) {
-                std.mem.swap(usize, &xi, &yi);
+                std.mem.swap(i32, &ax, &ay);
+                std.mem.swap(i32, &bx, &by);
+            }
+            if (ax > bx) {
+                std.mem.swap(i32, &ax, &bx);
+                std.mem.swap(i32, &ay, &by);
             }
 
-            if (yi >= Self.ROWS or xi >= Self.COLS)
-                continue;
+            var x = ax;
+            while (x < bx) : (x += 1) {
+                const y = ay + @divTrunc((by - ay) * (x - ax), (bx - ax));
 
-            self.fb[yi * Self.COLS + xi] = color;
+                var xi = @as(usize, @intCast(x));
+                var yi = @as(usize, @intCast(y));
+
+                if (steep) {
+                    std.mem.swap(usize, &xi, &yi);
+                }
+
+                if (yi >= Self.ROWS or xi >= Self.COLS)
+                    continue;
+
+                self.putPixel(xi, yi, color);
+            }
         }
-    }
-};
+    };
+}
 
 // -- DRAW SIN COS -------------------------------------------------------------
 
