@@ -50,8 +50,9 @@ Keypoints of each experiment:
 - [`mbr-pm-palette/`](mbr-pm-palette): Switch to VGA graphics video mode and
   enter 32-bit *protected mode*, then print the color palette of the selected
   graphics mode to the screen.
-- [`mbr-pm-videomode/`](mbr-pm-videomode): Switch to VGA graphics video mode and
-  enter 32-bit *protected mode*, then draw and animate some 2d and 3d shapes.
+- [`mbr-pm-videomode-vga/`](mbr-pm-videomode-vga): Switch to VGA graphics video
+  mode and enter 32-bit *protected mode*, then draw and animate some 2d and 3d
+  shapes.
 - [`mbr-pm-cpuid/`](mbr-pm-cpuid): Collect cpu features with the `cpuid`
   instruction.
 - [`mbr-lm-enter-asm/`](mbr-lm-enter-asm): Enter 64-bit *long mode* by setting
