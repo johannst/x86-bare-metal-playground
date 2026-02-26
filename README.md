@@ -53,6 +53,9 @@ Keypoints of each experiment:
 - [`mbr-pm-videomode-vga/`](mbr-pm-videomode-vga): Switch to VGA graphics video
   mode and enter 32-bit *protected mode*, then draw and animate some 2d and 3d
   shapes.
+- [`mbr-pm-videomode-vbe/`](mbr-pm-videomode-vbe): Enumerate available VESA VBE
+  video modes and switch to a hard-coded mode in case it is available. Draw and
+  animate some shapes on the higher resolution video mode.
 - [`mbr-pm-cpuid/`](mbr-pm-cpuid): Collect cpu features with the `cpuid`
   instruction.
 - [`mbr-lm-enter-asm/`](mbr-lm-enter-asm): Enter 64-bit *long mode* by setting
