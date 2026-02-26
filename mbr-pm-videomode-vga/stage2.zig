@@ -5,7 +5,11 @@
 const std = @import("std");
 const com = @import("shared/com.zig");
 const cpu = @import("shared/cpu.zig");
+const swr = @import("shared/swrast.zig");
 const bios = @import("bios_call.zig");
+
+const line = swr.line;
+const Point = swr.Point;
 
 // Set video mode 13h, see [1] & [2].
 //   * 320x200 graphic mode
@@ -132,7 +136,6 @@ fn burnCycles(cycles: u64) void {
 
 // -- FRAMEBUFFER --------------------------------------------------------------
 
-const Point = [2]i32;
 const Vec2 = [2]f64;
 const Vec3 = [3]f64;
 
@@ -162,6 +165,9 @@ fn GenericFramebuffer(comptime layout: FbMemLayout, cols: comptime_int, rows: co
 
         // Take a slice to VGA video memory (graphic mode).
         fb: []u8 = @as([*]u8, @ptrFromInt(0xA0000))[0 .. Self.COLS * Self.ROWS],
+        // Satisfy swrast.line interface.
+        xres: usize = cols,
+        yres: usize = rows,
 
         fn clear(self: *Self) void {
             const black = 0;
@@ -183,82 +189,10 @@ fn GenericFramebuffer(comptime layout: FbMemLayout, cols: comptime_int, rows: co
             }
         }
 
-        fn putPixel(self: *Self, x: usize, y: usize, color: u8) void {
+        pub fn putPixel(self: *Self, x: usize, y: usize, color: u8) void {
             switch (comptime layout) {
                 .linear => self.fb[y * Self.COLS + x] = color,
                 .planar => self.fb[y * Self.COLS / 8 + x / 8] |= @as(u8, 1) << (7 - @as(u3, @truncate(x))),
-            }
-        }
-
-        // Draw line between point a and point b.
-        //
-        // To draw the line we walk along one axis and compute the value
-        // for the other axis. The strategy is to walk the axis which has
-        // more pixels as this results in more steps and hence more pixels
-        // to draw the line.
-        //
-        // (a) ###             -
-        //        ###          dy
-        //           ### (b)   -
-        //    |-- dx --|
-        //
-        // - For (dx > dy) -> walk the x-axis.
-        // - For (dx < dy) -> walk the y-axis.
-        //
-        // A line between point a and b in 2d space is described by the
-        // vector equation.
-        //   line(t) = a + t(b - a)   where t is [0..1]
-        //
-        // This can be written as linear equations.
-        //    x = ax + t(bx - ax)  (i)
-        //    y = ay + t(by - ay)  (ii)
-        //
-        // We can solve (i) for t.
-        //   t = (x - ax) / (bx - ax)
-        // ans substitute t in (ii).
-        //   y = ay + (by - ay) * (x - ax) / (bx - ax)
-        // which gives us an equation for y depending on x.
-        //
-        // This can be used when walking the x-axis to compute the
-        // correpsonding pixel for y.
-        //
-        // When walking the y-axis we solve the linear equations such that
-        // we get an equations for x depending on y.
-        //
-        // In the concrete implementation we do two things.
-        // - We transpose the vectors depending on whether we walk the x
-        //   or y axis.
-        // - We swap a and b such that we always walk from left to right.
-        //
-        // [1] https://en.wikipedia.org/wiki/Line_(geometry)#Vectors
-        fn line(self: *Self, a: Point, b: Point, color: u8) void {
-            var ax, var ay = a;
-            var bx, var by = b;
-            const steep = @abs(bx - ax) < @abs(by - ay);
-            if (steep) {
-                std.mem.swap(i32, &ax, &ay);
-                std.mem.swap(i32, &bx, &by);
-            }
-            if (ax > bx) {
-                std.mem.swap(i32, &ax, &bx);
-                std.mem.swap(i32, &ay, &by);
-            }
-
-            var x = ax;
-            while (x < bx) : (x += 1) {
-                const y = ay + @divTrunc((by - ay) * (x - ax), (bx - ax));
-
-                var xi = @as(usize, @intCast(x));
-                var yi = @as(usize, @intCast(y));
-
-                if (steep) {
-                    std.mem.swap(usize, &xi, &yi);
-                }
-
-                if (yi >= Self.ROWS or xi >= Self.COLS)
-                    continue;
-
-                self.putPixel(xi, yi, color);
             }
         }
     };
@@ -278,7 +212,7 @@ fn drawSinCos(fb: *Framebuffer) void {
     }.call;
 
     // Draw the x axis.
-    fb.line(.{ 0, x_axis }, .{ Framebuffer.COLS - 1, x_axis }, 10);
+    line(fb, .{ 0, x_axis }, .{ Framebuffer.COLS - 1, x_axis }, 10);
 
     for (0..Framebuffer.COLS) |x| {
         const rad = @divExact(2.0 * std.math.pi * num_period * @as(f64, @floatFromInt(x)), Framebuffer.COLS);
@@ -353,7 +287,7 @@ fn animateRectangle(fb: *Framebuffer, s: usize) void {
 
     // Transform and draw rectangle to screen.
     for (0..4) |i| {
-        fb.line(toScreenCoord(transform(vertices[i % 4], s)), toScreenCoord(transform(vertices[(i + 1) % 4], s)), col);
+        line(fb, toScreenCoord(transform(vertices[i % 4], s)), toScreenCoord(transform(vertices[(i + 1) % 4], s)), col);
     }
 }
 
@@ -441,16 +375,16 @@ fn animateCube(fb: *Framebuffer, s: usize) void {
         // Front face.
         const a0 = vertices[(i + 0) % 4];
         const a1 = vertices[(i + 1) % 4];
-        fb.line(toScreenCoord(transform(a0, s)), toScreenCoord(transform(a1, s)), col);
+        line(fb, toScreenCoord(transform(a0, s)), toScreenCoord(transform(a1, s)), col);
 
         // Back face.
         const b0 = vertices[4 + (i + 0) % 4];
         const b1 = vertices[4 + (i + 1) % 4];
-        fb.line(toScreenCoord(transform(b0, s)), toScreenCoord(transform(b1, s)), col);
+        line(fb, toScreenCoord(transform(b0, s)), toScreenCoord(transform(b1, s)), col);
 
         // Side faces.
         const c0 = vertices[i];
         const c1 = vertices[i + 4];
-        fb.line(toScreenCoord(transform(c0, s)), toScreenCoord(transform(c1, s)), col);
+        line(fb, toScreenCoord(transform(c0, s)), toScreenCoord(transform(c1, s)), col);
     }
 }

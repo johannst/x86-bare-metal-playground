@@ -81,7 +81,7 @@ pub fn line(fb: anytype, a: Point, b: Point, color: u32) void {
             std.mem.swap(usize, &xi, &yi);
         }
 
-        fb.putPixel(xi, yi, color);
+        fb.putPixel(xi, yi, @truncate(color));
     }
 }
 
