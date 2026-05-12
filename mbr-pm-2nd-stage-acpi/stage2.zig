@@ -75,7 +75,7 @@ fn acpiFindRsdp() !*const acpi.Rsdp {
 fn acpiWalkRsdt(w: *std.Io.Writer, comptime T: type, paddr: T) !void {
     comptime std.debug.assert(T == u32 or T == u64);
 
-    const rsdt: *const acpi.Header = @ptrFromInt(try toUsizeSafe(paddr));
+    const rsdt: *align(1) const acpi.Header = @ptrFromInt(try toUsizeSafe(paddr));
 
     const expected_signature: [4]u8 = switch (T) {
         u32 => "RSDT".*,
@@ -93,7 +93,7 @@ fn acpiWalkRsdt(w: *std.Io.Writer, comptime T: type, paddr: T) !void {
         // Read physical address of next table.
         const sdt_paddr = std.mem.readInt(T, payload[0..@sizeOf(T)], .little);
         // Turn address into pointer to the table header.
-        const sdt_hdr: *const acpi.Header = @ptrFromInt(try toUsizeSafe(sdt_paddr));
+        const sdt_hdr: *align(1) const acpi.Header = @ptrFromInt(try toUsizeSafe(sdt_paddr));
 
         switch (sigToInt(&sdt_hdr.signature)) {
             sigToInt("APIC") => try acpiDumpMadt(w, @ptrCast(sdt_hdr)),
@@ -104,8 +104,8 @@ fn acpiWalkRsdt(w: *std.Io.Writer, comptime T: type, paddr: T) !void {
 }
 
 /// Dump the MADT (Multiple APIC Description Table) entries.
-fn acpiDumpMadt(w: *std.Io.Writer, madt: *const acpi.Madt) !void {
-    std.debug.assert(madt.hdr.validSignature("ACPI".*));
+fn acpiDumpMadt(w: *std.Io.Writer, madt: *align(1) const acpi.Madt) !void {
+    std.debug.assert(madt.hdr.validSignature("APIC".*));
 
     try w.print("@0x{x:08} table MADT lapic_addr={x} lapic_flags={}\n", .{ @intFromPtr(madt), madt.lapic_paddr, madt.lapic_flags });
 
@@ -113,7 +113,7 @@ fn acpiDumpMadt(w: *std.Io.Writer, madt: *const acpi.Madt) !void {
     var payload = madt.payload() orelse return error.MadtNoPayload;
     // While we can at least read the common interrupt header.
     while (payload.len > 1) {
-        const hdr: *const acpi.Madt.IrqHeader = @ptrCast(@alignCast(payload[0..]));
+        const hdr: *align(1) const acpi.Madt.IrqHeader = @ptrCast(payload[0..]);
 
         // Do we have enough bytes for the entry.
         if (payload.len < hdr.length)
@@ -133,7 +133,7 @@ fn acpiDumpMadt(w: *std.Io.Writer, madt: *const acpi.Madt) !void {
 }
 
 /// Dump the MCFG (Memory-mapped Configuration Space Description Table) entries.
-fn acpiDumpMcfg(w: *std.Io.Writer, mcfg: *const acpi.Mcfg) !void {
+fn acpiDumpMcfg(w: *std.Io.Writer, mcfg: *align(1) const acpi.Mcfg) !void {
     std.debug.assert(mcfg.hdr.validSignature("MCFG".*));
 
     // Go through all pci busses and devices print available functions.
@@ -151,6 +151,7 @@ fn acpiDumpMcfg(w: *std.Io.Writer, mcfg: *const acpi.Mcfg) !void {
 fn dumpPciFunctionConfigSpace(w: *std.Io.Writer, base_addr: u64, bus: u8, dev: u5, func: u3) !void {
     // The base address is relative to the bus 0. Each config space spans 4096 bytes (12 bits).
     const paddr = base_addr | (@as(u64, bus) << 20) | (@as(u64, dev) << 15) | (@as(u64, func) << 12);
+    std.debug.assert(paddr % @alignOf(pci.ConfigSpaceHeader) == 0);
     const funcp = @as(*pci.ConfigSpaceHeader, @ptrFromInt(try toUsizeSafe(paddr)));
 
     // Skip, invalid vendor id.

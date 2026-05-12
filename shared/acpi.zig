@@ -70,11 +70,11 @@ pub const Header = extern struct {
     /// Vendor revision.
     creator_revision: u32,
 
-    pub fn validSignature(self: *const Header, expected: [4]u8) bool {
+    pub fn validSignature(self: *align(1) const Header, expected: [4]u8) bool {
         return std.mem.eql(u8, &self.signature, &expected);
     }
 
-    pub fn validChecksum(self: *const Header) bool {
+    pub fn validChecksum(self: *align(1) const Header) bool {
         var sum: u8 = 0;
         for (@as([*]const u8, @ptrCast(self))[0..self.length]) |byte| {
             sum +%= byte;
@@ -82,7 +82,7 @@ pub const Header = extern struct {
         return sum == 0;
     }
 
-    pub fn payload(self: *const Header) ?[]const u8 {
+    pub fn payload(self: *align(1) const Header) ?[]const u8 {
         if (self.length <= @sizeOf(Header))
             return null;
         return @as([*]const u8, @ptrCast(self))[@sizeOf(Header)..self.length];
@@ -100,7 +100,7 @@ pub const Madt = extern struct {
         reserved: u31,
     },
 
-    pub fn payload(self: *const Madt) ?[]const u8 {
+    pub fn payload(self: *align(1) const Madt) ?[]const u8 {
         const p = self.hdr.payload() orelse return null;
         // Re-slice additional madt fields.
         return p[@sizeOf(Madt) - @sizeOf(Header) ..];
@@ -114,43 +114,43 @@ pub const Madt = extern struct {
 
     /// Interrupt controller structure.
     pub const IrqCtrlStruct = union(enum) {
-        lapic: *const extern struct {
+        lapic: *align(1) const extern struct {
             hdr: IrqHeader,
             uid: u8,
             id: u8,
             flags: u32,
         },
-        io_apic: *const extern struct {
+        io_apic: *align(1) const extern struct {
             hdr: IrqHeader,
             id: u8,
             reserved: u8,
             paddr: u32,
             globalIrqBase: u32,
         },
-        src_override: *const extern struct {
+        src_override: *align(1) const extern struct {
             hdr: IrqHeader,
             bus: u8,
             source: u8,
             globalIrq: u32,
             flags: u16,
         },
-        lapic_nmi: *const extern struct {
-            hdr: IrqHeader align(1),
-            uid: u8 align(1),
-            flags: u16 align(1),
-            lint: u8 align(1),
+        lapic_nmi: *align(1) const extern struct {
+            hdr: IrqHeader,
+            uid: u8,
+            flags: u16,
+            lint: u8,
         },
-        unknown: *const extern struct {
+        unknown: *align(1) const extern struct {
             hdr: IrqHeader,
         },
 
         pub fn from(hdr: *const IrqHeader) IrqCtrlStruct {
             return switch (hdr.kind) {
-                0 => .{ .lapic = @ptrCast(@alignCast(hdr)) },
-                1 => .{ .io_apic = @ptrCast(@alignCast(hdr)) },
-                2 => .{ .src_override = @ptrCast(@alignCast(hdr)) },
-                4 => .{ .lapic_nmi = @ptrCast(@alignCast(hdr)) },
-                else => .{ .unknown = @ptrCast(@alignCast(hdr)) },
+                0 => .{ .lapic = @ptrCast(hdr) },
+                1 => .{ .io_apic = @ptrCast(hdr) },
+                2 => .{ .src_override = @ptrCast(hdr) },
+                4 => .{ .lapic_nmi = @ptrCast(hdr) },
+                else => .{ .unknown = @ptrCast(hdr) },
             };
         }
     };
@@ -187,12 +187,12 @@ pub const Mcfg = extern struct {
         reserved: u32,
     };
 
-    pub fn payload(self: *const Mcfg) ?[]const PciConfigSegment {
+    pub fn payload(self: *align(1) const Mcfg) ?[]align(1) const PciConfigSegment {
         if (self.hdr.length <= @sizeOf(Mcfg))
             return null;
         const n = (self.hdr.length - @sizeOf(Mcfg)) / @sizeOf(PciConfigSegment);
         const b = @as([*]const u8, @ptrCast(self))[@sizeOf(Mcfg)..];
-        return @as([*]const PciConfigSegment, @ptrCast(@alignCast(b)))[0..n];
+        return @as([*]align(1) const PciConfigSegment, @ptrCast(b))[0..n];
     }
 };
 
