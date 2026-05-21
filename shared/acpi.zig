@@ -89,6 +89,43 @@ pub const Header = extern struct {
     }
 };
 
+/// Generic Address Struture (GAS).
+pub const GenericAddress = extern struct {
+    pub const AS_MMIO = 0x00;
+    pub const AS_IO = 0x01;
+
+    /// Address space identifier (0=mmio, 1=io, ..).
+    address_space_id: u8,
+    /// Size in bits of the given register, zero when addressing data structure.
+    reg_width: u8,
+    /// Bit offset of the register from the address, zero when addressing a data structure.
+    reg_offset: u8,
+    /// Access size, 1:byte, 2:word, 3:dword, 4:qword, or defined otherwise by address space.
+    access_size: u8,
+    /// The address of the register or data structure in the given address space.
+    /// 0: Physical address of the addressed register or structure.
+    /// 1: IO space address of the addressed register or structure.
+    addr: u64,
+};
+
+/// Fixed ACPI Description Table.
+pub const Fadt = extern struct {
+    /// Power Management Timer frequency [1].
+    /// [1] 4.8.3.3 Power Management Timer (PM_TMR)
+    pub const PM_TIMER_HZ = 3579545;
+
+    hdr: Header,
+    res: [40]u8,
+    /// System port address of the Power Management Timer (unused if x_pm_timer_blk set).
+    pm_timer_blk: u32,
+    res2: [11]u8,
+    /// Register width in bytes for the Power Management Timer (unused if x_pm_timer_blk set).
+    pm_timer_len: u8,
+    res3: [116]u8,
+    /// Extended address of the Power Management Timer (optional).
+    x_pm_timer_blk: GenericAddress,
+};
+
 /// Multiple APIC Description Table.
 pub const Madt = extern struct {
     hdr: Header,

@@ -96,11 +96,47 @@ fn acpiWalkRsdt(w: *std.Io.Writer, comptime T: type, paddr: T) !void {
         const sdt_hdr: *align(1) const acpi.Header = @ptrFromInt(try toUsizeSafe(sdt_paddr));
 
         switch (sigToInt(&sdt_hdr.signature)) {
+            sigToInt("FACP") => try acpiDumpFadt(w, @ptrCast(sdt_hdr)),
             sigToInt("APIC") => try acpiDumpMadt(w, @ptrCast(sdt_hdr)),
             sigToInt("MCFG") => try acpiDumpMcfg(w, @ptrCast(sdt_hdr)),
             else => try w.print("@0x{x:08} table {s}\n", .{ sdt_paddr, sdt_hdr.signature }),
         }
     }
+}
+
+/// Dump the FADT (Fixed ACPI Description Table).
+fn acpiDumpFadt(w: *std.Io.Writer, fadt: *align(1) const acpi.Fadt) !void {
+    std.debug.assert(fadt.hdr.validSignature("FACP".*));
+
+    try w.print("@0x{x:08} table FACP\n", .{@intFromPtr(fadt)});
+
+    if (fadt.x_pm_timer_blk.address_space_id != acpi.GenericAddress.AS_IO) {
+        return error.PowerManagementTimerNotInIoSpace;
+    }
+    if (fadt.x_pm_timer_blk.reg_width != 32) {
+        return error.PowerManagementTimerUnhandledRegsiterSize;
+    }
+
+    // IO address space is 16bit.
+    std.debug.assert(fadt.x_pm_timer_blk.addr <= std.math.maxInt(u16));
+    const pm_port: u16 = @truncate(fadt.x_pm_timer_blk.addr);
+    try w.print("PM timer at io port 0x{x}\n", .{pm_port});
+
+    // Read the power management timer value.
+    try w.print("PM timer value {}\n", .{inl(pm_port)});
+    try w.print("PM timer value {}\n", .{inl(pm_port)});
+    try w.print("PM timer value {}\n", .{inl(pm_port)});
+    try w.print("PM timer value {}\n", .{inl(pm_port)});
+
+    // Spin for 2 seconds.
+    try w.writeAll("start counting for 2s .. ");
+    try w.flush();
+    const start = inl(pm_port);
+    while (inl(pm_port) -% start < (2 * acpi.Fadt.PM_TIMER_HZ)) {
+        asm volatile ("pause");
+    }
+    try w.writeAll("done\n");
+    try w.flush();
 }
 
 /// Dump the MADT (Multiple APIC Description Table) entries.
@@ -219,6 +255,15 @@ fn toUsizeSafe(val: u64) !usize {
 
 fn sigToInt(signature: *const [4]u8) u32 {
     return std.mem.readInt(u32, signature, .little);
+}
+
+inline fn inl(port: u16) u32 {
+    var val: u32 = 0;
+    _ = asm volatile ("inl %[dx], %[eax]"
+        : [eax] "={eax}" (val),
+        : [dx] "{dx}" (port),
+    );
+    return val;
 }
 
 // -- PANIC HANDLER ------------------------------------------------------------
