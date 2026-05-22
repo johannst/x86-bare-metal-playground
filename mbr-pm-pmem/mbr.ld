@@ -33,6 +33,11 @@ SECTIONS {
         . = 0x7e00  + 16 * 512;
     }
     ASSERT(SIZEOF(.stage2) == 16 * 512, "mbr loads exactly 16 sectors")
+    /**
+     * seabios only supports 128 * 512 sectors per call [1].
+     * [1] https://github.com/qemu/seabios/blob/106549a4362f6b499da522f8f8f5ed9f98388f87/src/block.c#L627
+     */
+    ASSERT(SIZEOF(.stage2) / 512 < 129, "stage2 should not be larger than 128 * 512 bytes")
 
     /**
      * Discard any code/data not matched by any pattern above.

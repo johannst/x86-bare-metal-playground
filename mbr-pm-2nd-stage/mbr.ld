@@ -32,4 +32,9 @@ SECTIONS {
     }
     HIDDEN(_stage2_end= .);
     ASSERT((_stage2_end - _stage2_start) % 512 == 0, "stage2 should be multiple of 512 bytes")
+    /**
+     * seabios only supports 128 * 512 sectors per call [1].
+     * [1] https://github.com/qemu/seabios/blob/106549a4362f6b499da522f8f8f5ed9f98388f87/src/block.c#L627
+     */
+    ASSERT((_stage2_end - _stage2_start) / 512 < 129, "stage2 should not be larger than 128 * 512 bytes")
 }

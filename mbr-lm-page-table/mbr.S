@@ -62,7 +62,7 @@ rm_entry:
     jmp 0:rm16
 
 // LBA - disk address packet.
-dap_pkt:
+lba_pkt:
     .byte  0x10    // Size of this disk packet in bytes (16).
     .byte  0       // Reserved.
     .2byte 20      // Number of blocks to read (sectors 512 bytes?) to read.
@@ -76,7 +76,7 @@ load_stage2:
     mov ah, 0x42
     // Bios puts boot disk into dl.
     // mov dl, #drive
-    lea si, [dap_pkt]
+    lea si, [lba_pkt]
     int 0x13
     // Quirk: BIOS on my laptop enables IF flag.
     cli
