@@ -101,7 +101,7 @@ pub fn vga(fg: u4, bg: u3) type {
             ctx: *Self,
             interface: std.Io.Writer,
 
-            fn drain(w: *std.Io.Writer, data: []const []const u8, splat: usize) std.io.Writer.Error!usize {
+            fn drain(w: *std.Io.Writer, data: []const []const u8, splat: usize) std.Io.Writer.Error!usize {
                 if (splat > 1) return error.WriteFailed;
 
                 // Get pointer to VgaWriter container.
