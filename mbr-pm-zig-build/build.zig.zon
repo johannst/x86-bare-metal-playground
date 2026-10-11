@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: MIT
+//
+// Copyright (c) 2026, Johannes Stoelp <dev@memzero.de>
+
+.{
+    .name = .mbr_pm_zig_build,
+    .version = "0.0.0",
+    .fingerprint = 0x86845d0f33f86c29,
+    .minimum_zig_version = "0.15.2",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "stage2.zig",
+        "mbr.S",
+        "mbr.ld",
+        "Makefile",
+    },
+}
